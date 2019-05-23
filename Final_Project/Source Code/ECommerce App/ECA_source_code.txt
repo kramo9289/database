@@ -1,0 +1,803 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package ecommerceapp;
+ 
+import javafx.application.Application;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.layout.*;
+import javafx.stage.Stage;
+ 
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javafx.collections.FXCollections;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.Popup;
+ 
+/**
+ *
+ * @author webst
+ */
+public class ECommerceApp extends Application {
+    static Connection con;
+    GridPane loginScreen=new GridPane();
+    GridPane createAccScreen=new GridPane();
+    TabPane itemcartScreen=new TabPane();
+    String sessionUsername="";
+    //Inner class that provides the object needed to create rows for the transaction tab table
+    public class Transaction{
+        /**
+         * delser=delivery service
+         * paytype=payment type
+         * numofitems=number of items per type
+         * id= id of transaction
+         * name=name of items
+         */
+        private String delser="";
+        private String paytype="";
+        private String numofitems="";
+        private String id="";
+        private String name="";
+        public Transaction(String a, String b, String c, String d, String e){
+            this.delser=a;
+            this.paytype=b;
+            this.numofitems=c;
+            this.id=d;
+            this.name=e;
+        }
+        public String getDelser() {
+            return delser;
+        }
+        public void setDelser(String delser) {
+            this.delser = delser;
+        }
+        public String getPaytype() {
+            return paytype;
+        }
+        public void setPaytype(String paytype) {
+            this.paytype = paytype;
+        }
+        public String getNumofitems() {
+            return numofitems;
+        }
+        public void setNumofitems(String numofitems) {
+            this.numofitems = numofitems;
+        }
+        public String getId() {
+            return id;
+        }
+        public void setId(String id) {
+            this.id = id;
+        }
+        public String getName() {
+            return name;
+        }
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
+    //Inner class that provides the object needed to create rows for the item tab table
+    public class InventoryItem{
+        /**
+         * id = item id
+         * name= item name
+         * price= item price
+         * type= item type
+         * quantity= item quantity
+         * price has been made so that 1000=10.00 or 10 dollars
+         */
+        private String id = "";
+        private String name = "";
+        private String price = "";
+        private String type = "";
+        private String quantity = "";
+        public InventoryItem(String a, String b, String c, String d, String e) {
+            this.name = a;
+            this.price = b.substring(0, b.length() - 2) + "." + b.substring(b.length() - 2);;
+            this.type = c;
+            this.quantity = d;
+            this.id = e;
+        }
+        public String getId() {
+            return id;
+        }
+        public void setId(String id) {
+            this.id = id;
+        }
+        public String getName() {
+            return name;
+        }
+        public void setName(String name) {
+            this.name = name;
+        }
+        public String getPrice() {
+            return price;
+        }
+        public void setPrice(String price) {
+            this.price = price;
+        }
+        public String getType() {
+            return type;
+        }
+        public void setType(String type) {
+            this.type = type;
+        }
+        public String getQuantity() {
+            return quantity;
+        }
+        public void setQuantity(String quantity) {
+            this.quantity = quantity;
+        }
+    }
+    @Override
+    public void start(Stage primaryStage) {
+        Scene scene = new Scene(loginScreen, 800, 900);
+        primaryStage.setTitle("Hello World!");
+        primaryStage.setScene(scene);
+        //LOGINSCREEN
+        Label welcomeLabel=new Label("Welcome to E-Commerce \nPlease login with your username and password \nor create a new account.");
+        TextField username=new TextField("");
+        username.setPromptText("Username");
+        TextField password=new TextField("");
+        password.setPromptText("Password");
+        Button loginBTN=new Button("Login");
+        Label lerr=new Label("");
+        loginBTN.setOnAction(e->{
+            lerr.setText("");
+            if(username.getText().equals("") || password.getText().equals("")){
+                lerr.setText("Please fill in the login information.");
+            }
+            else{
+                ResultSet rs=select(con, "*", "kevramos.customer", "username='"+username.getText()+"' AND password='"+password.getText()+"'");
+                //try block = check if there user and pass in database, if not send error, if true then send to itemcartscreen
+                boolean found=false;
+                try {
+                    while(rs.next()){
+                        found=true;
+                    }
+                } catch (SQLException ex) {
+                    Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                if(!found){
+                    lerr.setText("No such login found.");
+                }
+                else{
+                    lerr.setText("Logging in...");
+                    sessionUsername=username.getText();
+                    scene.setRoot(itemcartScreen);
+                }
+            }
+        });
+        //Button to switch to create account screen
+        Button switch2accBTN = new Button("Create an Account");
+        switch2accBTN.setOnAction(e->{
+            scene.setRoot(createAccScreen);
+        });
+        //CREATEACCSCREEN
+        Label welcomeAcc=new Label("Create an account, or switch back to login");
+        TextField fn= new TextField("");
+        fn.setPromptText("First Name");
+        TextField ln= new TextField("");
+        ln.setPromptText("Last Name");
+        TextField user= new TextField("");
+        user.setPromptText("Username");
+        TextField pass= new TextField("");
+        pass.setPromptText("Password");
+        TextField add= new TextField("");
+        add.setPromptText("Address");
+        TextField pNum= new TextField("");
+        pNum.setPromptText("Phone Number");
+        TextField eMail= new TextField("");
+        eMail.setPromptText("Email");
+        Label aerr=new Label("");
+        Button createAccBTN= new Button("Create Account");
+        createAccBTN.setOnAction(e->{
+            /**
+             * If any of the information is not filled, error
+             * If username is found in database, error
+             * else switches to tabs screen
+             */
+            aerr.setText("");
+            String fnt=fn.getText();
+            String lnt=ln.getText();
+            String usert=user.getText();
+            String passt=pass.getText();
+            String addt=add.getText();
+            String pNumt=pNum.getText();
+            String eMailt=eMail.getText();
+            if(fnt.equals("") || lnt.equals("") || usert.equals("") || passt.equals("") || addt.equals("") || pNumt.equals("") || eMailt.equals("")){
+                aerr.setText("All information is required.");
+            }
+            else{
+                //try block= check if user is taken, if yes error if no insert into database and send to item cart screen
+                ResultSet rs=select(con, "*", "kevramos.customer", "username='"+usert+"'");
+                boolean found=false;
+                try {
+                    while(rs.next()){
+                        found=true;
+                    }
+                } catch (SQLException ex) {
+                    Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                if(!found){
+                    aerr.setText("Inserting...");
+                    //insert(con, "customer", "(firstname,lastname,username,password,address,phonenumber,email)", "('"+fnt+"','"+lnt+"','"+usert+"','"+passt+"','"+addt+"','"+pNumt+"','"+eMailt+"')");
+                    sessionUsername=usert;
+                    scene.setRoot(itemcartScreen);
+                }
+                else{
+                    aerr.setText("Username found. Try again.");
+                }
+               
+            }
+        });
+        /**
+         * Option to go back to login screen
+         */
+        Button switch2logBTN= new Button("Switch to Login Screen");
+        switch2logBTN.setOnAction(e->{
+            scene.setRoot(loginScreen);
+        });
+        //Item Cart Screen
+        /**
+         * Three Tabs= one for item lists that will add to cart
+         * one for actual cart that will add to transaction database
+         * one for transactions
+         * These tabs cannot be closed.
+        */
+        Tab itemTab=new Tab("Item List");
+        GridPane itemPane=new GridPane();
+        itemTab.setContent(itemPane);
+        Tab cartTab=new Tab("Shopping Cart");
+        GridPane cartPane=new GridPane();
+        cartTab.setContent(cartPane);
+        Tab transTab=new Tab("Transactions");
+        GridPane transPane=new GridPane();
+        transTab.setContent(transPane);
+        itemTab.setClosable(false);
+        cartTab.setClosable(false);
+        transTab.setClosable(false);
+        //Item Tab
+        TableView itemList=new TableView();
+        //Basically creating a table
+        itemList.prefWidthProperty().bind(itemPane.widthProperty());
+        TableColumn<String, InventoryItem> iCol=new TableColumn<>("Item ID");
+        TableColumn<String, InventoryItem> nCol=new TableColumn<>("Item Name");
+        TableColumn<String, InventoryItem> pCol=new TableColumn<>("Price");
+        TableColumn<String, InventoryItem> tCol=new TableColumn<>("Type");
+        TableColumn<String, InventoryItem> qCol=new TableColumn<>("Quantity");
+        iCol.prefWidthProperty().bind(itemList.widthProperty().multiply(.12));
+        nCol.prefWidthProperty().bind(itemList.widthProperty().multiply(.30));
+        pCol.prefWidthProperty().bind(itemList.widthProperty().multiply(.22));
+        tCol.prefWidthProperty().bind(itemList.widthProperty().multiply(.22));
+        qCol.prefWidthProperty().bind(itemList.widthProperty().multiply(.13));
+        iCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        nCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+        pCol.setCellValueFactory(new PropertyValueFactory<>("price"));
+        tCol.setCellValueFactory(new PropertyValueFactory<>("type"));
+        qCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+        itemList.getColumns().addAll(iCol,nCol, pCol, tCol, qCol);
+        //Allows user to add how much of each item he/she wants to get
+        Label howmuchLabel=new Label("How much of this item do you wish to buy?");
+        TextField itemQuant=new TextField("1");
+        itemQuant.setPromptText("Item Quantity");
+        Label ierr=new Label("");
+        Button a2CartButton = new Button("Add to Shopping Cart");
+        a2CartButton.setOnAction(e -> {
+            ierr.setText("");
+            InventoryItem ii=(InventoryItem) itemList.getSelectionModel().getSelectedItem();
+            if(ii!=null){
+                if(Integer.parseInt(itemQuant.getText())>0 && Integer.parseInt(itemQuant.getText())<=Integer.parseInt(ii.getQuantity())){
+                    //Gets Customer ID
+                    ResultSet customerSet=select(con,"idcustomer","kevramos.customer","username='"+sessionUsername+"'");
+                    String custID="";
+                    try {
+                        customerSet.next();
+                        custID=customerSet.getString("idcustomer");
+                    } catch (SQLException ex) {
+                        Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    //Gets quantity from shopping cart in case it needs to update existing item id in cart
+                    ResultSet existSet=select(con,"*","kevramos.shoppingcart","itemid="+ii.getId()+" AND customerid="+custID);
+                    String foundQuant="0";
+                    boolean found=false;
+                    try {
+                        while(existSet.next()){
+                            found=true;
+                            foundQuant=existSet.getString("itemquantity");
+                        }
+                    } catch (SQLException ex) {
+                        Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    //if there is an existing item id, then update if not insert
+                    if(found){
+                        update(con,"shoppingcart","itemquantity='"+(Integer.parseInt(foundQuant)+Integer.parseInt(itemQuant.getText()))+"'","itemid='"+ii.getId()+"'");
+                    }
+                    else{
+                        insert(con, "shoppingcart", "(customerid,itemid,itemprice,itemquantity)", "('"+custID+"','"+ii.getId()+"','"+ii.getPrice()+"','"+Integer.parseInt(itemQuant.getText())+"')");
+                    }
+                }
+                else{
+                    ierr.setText("Item Quantity must be at least 0 and be at most the quantity in stock.");
+                }
+            }
+            else{
+                ierr.setText("Item not properly selected in table.");
+            }
+            itemList.getSelectionModel().clearSelection();
+        });
+        //Adding into item tab
+        itemPane.add(itemList,0,0);
+        itemPane.add(howmuchLabel,0,1);
+        itemPane.add(itemQuant,0,2);
+        itemPane.add(a2CartButton,0,3);
+        itemPane.add(ierr,0,4);
+       
+        // CartTab
+        TableView cartList=new TableView();
+        //Creating shoppinglist table
+        cartList.prefWidthProperty().bind(cartPane.widthProperty());
+        TableColumn<String,InventoryItem> ciCol=new TableColumn<>("Item ID");
+        TableColumn<String,InventoryItem> cnCol=new TableColumn<>("Item Name");
+        TableColumn<String,InventoryItem> cpCol=new TableColumn<>("Price");
+        TableColumn<String,InventoryItem> cqCol=new TableColumn<>("Quantity");
+        ciCol.prefWidthProperty().bind(cartList.widthProperty().multiply(.20));
+        cnCol.prefWidthProperty().bind(cartList.widthProperty().multiply(.30));
+        cpCol.prefWidthProperty().bind(cartList.widthProperty().multiply(.25));
+        cqCol.prefWidthProperty().bind(cartList.widthProperty().multiply(.24));
+        ciCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        cnCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+        cpCol.setCellValueFactory(new PropertyValueFactory<>("price"));
+        cqCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+        cartList.getColumns().addAll(ciCol,cnCol, cpCol, cqCol);
+        Button del4CartBTN=new Button("Delete item from cart");
+        Label cerr1=new Label("");
+        del4CartBTN.setOnAction(e->{
+            //Delete that specific item from cart
+            cerr1.setText("");
+            InventoryItem ii=(InventoryItem) cartList.getSelectionModel().getSelectedItem();
+            if(ii!=null){
+                delete(con, "shoppingcart", "itemid="+ii.getId());
+                updateCartTable(cartList);
+            }
+            else{
+                cerr1.setText("Item not properly selected in table.");
+            }
+            itemList.getSelectionModel().clearSelection();
+        });
+        //A bunch of textboxes and drop-down menus that the user must complete
+        Label deliveryInfo=new Label("Insert Delivery Info");
+        String[] delSTypes=new String[4];
+        delSTypes[0]="FedEx";
+        delSTypes[1]="USPS";
+        delSTypes[2]="UPS";
+        delSTypes[3]="DHS";
+        ComboBox delSer=new ComboBox(FXCollections.observableArrayList(delSTypes));
+        delSer.setPromptText("Delivery Service");
+        String[] shipTypes=new String[3];
+        shipTypes[0]="gold";
+        shipTypes[1]="silver";
+        shipTypes[2]="bronze";
+        ComboBox shipType=new ComboBox(FXCollections.observableArrayList(shipTypes));
+        shipType.setPromptText("Shipment Type");
+        TextField delAdd=new TextField("");
+        delAdd.setPromptText("Delivery Address");
+        Label paymentInfo=new Label("Insert Payment Info");
+        String[] payments=new String[3];
+        payments[0]="card";
+        payments[1]="paypal";
+        payments[2]="electroniccheck";
+        ComboBox payType=new ComboBox(FXCollections.observableArrayList(payments));
+        payType.setPromptText("Payment Option");
+        TextField cardName=new TextField("");
+        cardName.setPromptText("Cardholder's Name");
+        TextField cardNum=new TextField("");
+        cardNum.setPromptText("Card Number");
+        TextField cardExp=new TextField("");
+        cardExp.setPromptText("Card Exp Date");
+        TextField ppEmail=new TextField("");
+        ppEmail.setPromptText("PayPal Email");
+        TextField ecRoute=new TextField("");
+        ecRoute.setPromptText("E-Check Routing #");
+        TextField ecAcc=new TextField("");
+        ecAcc.setPromptText("E-Check Acc #");
+        //Adding into cart tab
+        cartPane.add(cartList,0,0);
+        GridPane notTablePane=new GridPane();
+        notTablePane.add(del4CartBTN,0,1);
+        notTablePane.add(cerr1,0,2);
+        notTablePane.add(deliveryInfo,0,3);
+        notTablePane.add(delSer,0,4);
+        notTablePane.add(shipType,1,4);
+        notTablePane.add(delAdd,2,4);
+        notTablePane.add(paymentInfo,0,5);
+        notTablePane.add(payType,0,6);
+        GridPane paymentPane=new GridPane();
+        //Depending on what payment type it is, it will show the correct textboxes
+        payType.setOnAction(e->{
+            paymentPane.getChildren().clear();
+            if(payType.getValue().equals("card")){
+                paymentPane.add(cardName,0,0);
+                paymentPane.add(cardNum,1,0);
+                paymentPane.add(cardExp,2,0);
+            }
+            else if(payType.getValue().equals("paypal")){
+                paymentPane.add(ppEmail,0,0);
+            }
+            else if(payType.getValue().equals("electroniccheck")){
+                paymentPane.add(ecRoute,0,0);
+                paymentPane.add(ecAcc,1,0);
+            }
+        });
+        cartPane.add(paymentPane,0,7);
+        cartPane.add(notTablePane,0,1);
+        Button commitCartBTN= new Button("Order Everything in Cart");
+        Label cerr2=new Label("");
+        cartPane.add(commitCartBTN,0,8);
+        cartPane.add(cerr2,0,9);
+        //This button orders everything
+        commitCartBTN.setOnAction(e->{
+            cerr2.setText("");
+            //Gets Customer ID
+            ResultSet customerSet = select(con, "idcustomer", "kevramos.customer", "username='" + sessionUsername + "'");
+            String custID = "";
+            try {
+                customerSet.next();
+                custID = customerSet.getString("idcustomer");
+            } catch (SQLException ex) {
+                Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            //Checks to see delivery infor is filled
+            boolean checkDel=delSer.getValue()!=null && shipType.getValue()!=null && !delAdd.getText().equals("");
+            if(!checkDel){
+                cerr2.setText("Delivery Info must be filled.");
+            }
+            //Checks to see if paymanet info is filled
+            boolean checkPM=false;
+            if(payType.getValue()!=null){
+                String pt=(String)payType.getValue();
+                if(pt.equals("card")){
+                    if(!cardName.getText().equals("") && !cardNum.getText().equals("") && !cardExp.getText().equals("")){
+                        checkPM=true;
+                    }
+                    else{
+                        cerr2.setText("All Payment Info must be filled.");
+                    }
+                }
+                else if(pt.equals("paypal")){
+                    if(!ppEmail.getText().equals("")){
+                        checkPM=true;
+                    }
+                    else{
+                        cerr2.setText("All Payment Info must be filled.");
+                    }
+                }
+                else if(pt.equals("electroniccheck")){
+                    if(!ecRoute.getText().equals("") && !ecAcc.getText().equals("")){
+                        checkPM=true;
+                    }
+                    else{
+                        cerr2.setText("All Payment Info must be filled.");
+                    }
+                }
+            }
+            else{
+                cerr2.setText("Payment Option must be chosen.");
+            }
+            //If all are filled, begin the inserting.
+            if(checkDel && checkPM){
+                Timestamp ts=new Timestamp(System.currentTimeMillis());
+                String pt=(String)payType.getValue();
+                String ds=(String)delSer.getValue();
+                String st=(String)shipType.getValue();
+                //Insert into transaction table and get the id
+                int transID=insert(con, "transaction","(customerid,date)" , "('"+custID+"','"+ts.toString()+"')");
+                //Insert into payment table depending on what type
+                if(pt.equals("card")){
+                    insert(con,"payment","(transactionid,paymenttype,cardname,cardnumber,cardexpdate)","('"+transID+"','"+pt+"','"+cardName.getText()+"','"+cardNum.getText()+"','"+cardExp.getText()+"')");
+                }
+                else if(pt.equals("paypal")){
+                    insert(con,"payment","(transactionid,paymenttype,paypalemail)","('"+transID+"','"+pt+"','"+ppEmail.getText()+"')");
+                }
+                else if(pt.equals("electroniccheck")){
+                    insert(con,"payment","(transactionid,paymenttype,ecrouting,ecaccount)","('"+transID+"','"+pt+"','"+ecRoute.getText()+"','"+ecAcc.getText()+"')");
+                }
+                //Adds correct shipping fee depending of type of shipping plan
+                String charge="";
+                if(st.equals("gold")){
+                    charge="100";
+                }
+                else if(st.equals("silver")){
+                    charge="600";
+                }
+                else if(st.equals("bronze")){
+                    charge="1400";
+                }
+                //Inserts into delivery info table
+                insert(con,"deliveryinfo","(transactionid,deliveryservice,shipmenttype,deliveryaddress,shipmentcharge)","('"+transID+"','"+ds+"','"+st+"','"+delAdd.getText()+"','"+charge+"')");
+                ResultSet ourCartSet=select(con,"*","kevramos.shoppingcart","customerid="+custID);
+                try {
+                    //Kind of complicated
+                    /**
+                     * For each item in the shopping cart,
+                     * Each item gets inserted in the transactionitem table with the current transaction ID
+                     * Then it delete the current item in the shopping cart table
+                     * Then it finds the quantity for the item in the inventory table
+                     * Then it decrements the quantity in the inventory table
+                     * Then it updates the shopping shopping cart table
+                     * Changing the other tabs aren't necessary because you will have to click to that tab which will update it.
+                     */
+                    while(ourCartSet.next()){
+                        String iID=ourCartSet.getString("itemid");
+                        String iQuant=ourCartSet.getString("itemquantity");
+                        insert(con,"transactionitem","(transactionid,itemid,itemquantity)","('"+transID+"','"+iID+"','"+iQuant+"')");
+                        ourCartSet.deleteRow();
+                        ResultSet invQuantSet=select(con,"quantity","kevramos.inventory","itemid="+iID);
+                        String iiQuant="";
+                        try{
+                            invQuantSet.next();
+                            iiQuant=invQuantSet.getString("quantity");
+                        }
+                        catch(SQLException exc){
+                            Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, exc);
+                        }
+                        update(con,"inventory","quantity="+(Integer.parseInt(iiQuant)-Integer.parseInt(iQuant)),"itemid="+iID);
+                        updateCartTable(cartList);
+                    }
+                } catch (SQLException ex) {
+                    Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        });
+        //Transaction Tab
+        TableView transList=new TableView();
+        //Creating transaction list table
+        transList.prefWidthProperty().bind(transPane.widthProperty());
+        TableColumn<String,Transaction> tiCol=new TableColumn<>("Transaction ID");
+        TableColumn<String,Transaction> tnCol=new TableColumn<>("Item Name");
+        TableColumn<String,Transaction> tdCol=new TableColumn<>("Delivery Service");
+        TableColumn<String,Transaction> tpCol=new TableColumn<>("Payment Type");
+        TableColumn<String,Transaction> tqCol=new TableColumn<>("Quantity");
+        tiCol.prefWidthProperty().bind(transList.widthProperty().multiply(.15));
+        tnCol.prefWidthProperty().bind(transList.widthProperty().multiply(.24));
+        tdCol.prefWidthProperty().bind(transList.widthProperty().multiply(.23));
+        tpCol.prefWidthProperty().bind(transList.widthProperty().multiply(.23));
+        tqCol.prefWidthProperty().bind(cartList.widthProperty().multiply(.14));
+        tiCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        tnCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+        tdCol.setCellValueFactory(new PropertyValueFactory<>("delser"));
+        tpCol.setCellValueFactory(new PropertyValueFactory<>("paytype"));
+        tqCol.setCellValueFactory(new PropertyValueFactory<>("numofitems"));
+        transList.getColumns().addAll(tiCol,tnCol, tdCol,tpCol, tqCol);
+        //whichever tabs gets clicked in tabs screen, it updates that tab's table
+        itemcartScreen.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if(newValue==itemTab){
+                updateTable(itemList);
+            }
+            else if(newValue==cartTab){
+                updateCartTable(cartList);
+            }
+            else if(newValue==transTab){
+                updateTransTable(transList);
+            }
+        });
+        transPane.add(transList, 0, 0);
+        //AddingElements
+        loginScreen.add(welcomeLabel, 1, 0);
+        loginScreen.add(username, 1,1);
+        loginScreen.add(password, 1,2);
+        loginScreen.add(loginBTN, 1,3);
+        loginScreen.add(switch2accBTN,1,4);
+        loginScreen.add(lerr,1,5);
+        /////
+        createAccScreen.add(welcomeAcc,1,0);
+        createAccScreen.add(fn,1,1);
+        createAccScreen.add(ln,1,2);
+        createAccScreen.add(user,1,3);
+        createAccScreen.add(pass,1,4);
+        createAccScreen.add(add,1,5);
+        createAccScreen.add(pNum,1,6);
+        createAccScreen.add(eMail,1,7);
+        createAccScreen.add(createAccBTN,1,8);
+        createAccScreen.add(switch2logBTN,1,9);
+        createAccScreen.add(aerr,1,10);
+        /////
+        itemcartScreen.getTabs().addAll(itemTab,cartTab,transTab);
+        //Styling
+        loginScreen.setAlignment(Pos.CENTER);
+        primaryStage.show();
+    }
+    public static void main(String[] args) {
+        try{
+            //Connects to Kevin's database
+            Class.forName("com.mysql.jdbc.Driver");
+            con = DriverManager.getConnection("jdbc:mysql://mysql4.cs.stonybrook.edu:3306/kevramos","kevramos", "111019436");
+            launch(args);
+        }catch(Exception e){
+            System.out.println("error");
+            e.printStackTrace();
+        }
+    }
+    /**
+     * Update transactions table from database
+     *
+     * SELECT idtransaction,itemname,deliveryservice,paymenttype,itemquantity
+     * FROM kevramos.transaction AS t
+     * INNER JOIN kevramos.deliveryinfo AS d ON d.transactionid=t.idtransaction
+     * INNER JOIN kevramos.payment AS p ON p.transactionid=t.idtransaction
+     * INNER JOIN kevramos.transactionitem AS i ON i.transactionid=t.idtransaction
+     * INNER JOIN kevramos.item AS e ON e.iditem=i.itemid
+     * WHERE customerid=2;
+     */
+    public void updateTransTable(TableView transList){
+        transList.getItems().clear();
+        try{
+            ResultSet customerSet = select(con, "idcustomer", "kevramos.customer", "username='" + sessionUsername + "'");
+            String custID = "";
+            try {
+                customerSet.next();
+                custID = customerSet.getString("idcustomer");
+            } catch (SQLException ex) {
+                Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            ResultSet rs=select(con,"idtransaction,itemname,deliveryservice,paymenttype,itemquantity", "transaction AS t INNER JOIN kevramos.deliveryinfo AS d ON d.transactionid=t.idtransaction INNER JOIN kevramos.payment AS p ON p.transactionid=t.idtransaction INNER JOIN kevramos.transactionitem AS i ON i.transactionid=t.idtransaction INNER JOIN kevramos.item AS e ON e.iditem=i.itemid", "customerid='"+custID+"'");
+            while(rs.next()){
+                String id=rs.getString("idtransaction");
+                String iName=rs.getString("itemname");
+                String delSer=rs.getString("deliveryservice");
+                String payType=rs.getString("paymenttype");
+                String quantity=rs.getString("itemquantity");
+                if(Integer.parseInt(quantity)>0) transList.getItems().add(new Transaction(delSer, payType, quantity, id, iName));
+               
+            }
+        }catch(SQLException ex){
+            Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    /**
+     *
+     * Updates the table in the shopping cart from database
+     * SELECT itemname,price,itemtype,quantity,iditem FROM kevramos.item INNER
+     * JOIN kevramos.shoppingcart ON itemid=iditem;
+     */
+    public void updateCartTable(TableView cartList){
+        cartList.getItems().clear();
+        try{
+            ResultSet customerSet = select(con, "idcustomer", "kevramos.customer", "username='" + sessionUsername + "'");
+            String custID = "";
+            try {
+                customerSet.next();
+                custID = customerSet.getString("idcustomer");
+            } catch (SQLException ex) {
+                Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            ResultSet rs=select(con,"itemname,price,itemtype,itemquantity,iditem", "item INNER JOIN kevramos.shoppingcart ON itemid=iditem", "customerid='"+custID+"'");
+            while(rs.next()){
+                String id=rs.getString("iditem");
+                String iName=rs.getString("itemname");
+                String price=rs.getString("price");
+                String quantity=rs.getString("itemquantity");
+                if(Integer.parseInt(quantity)>0) cartList.getItems().add(new InventoryItem(iName, price, "", quantity, id));
+               
+            }
+        }catch(SQLException ex){
+            Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+ 
+    /**
+     * Updates the table in the item tab from database
+     * SELECT itemname,price,itemtype,quantity,iditem FROM kevramos.item INNER
+     * JOIN kevramos.inventory ON itemid=iditem;
+     */
+    public void updateTable(TableView itemList){
+        itemList.getItems().clear();
+        try {
+            ResultSet rs = select(con, "itemname,price,itemtype,quantity,iditem", "item INNER JOIN kevramos.inventory ON itemid=iditem", "");
+            while(rs.next()){
+                String id=rs.getString("iditem");
+                String iName=rs.getString("itemname");
+                String price=rs.getString("price");
+                String iType=rs.getString("itemtype");
+                String quantity=rs.getString("quantity");
+                if(Integer.parseInt(quantity)>0) itemList.getItems().add(new InventoryItem(iName, price, iType, quantity, id));
+               
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(ECommerceApp.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    /**
+     * SELECT SQL Method
+     * select param is the select columns or *
+     * from param is the table
+     * returns the set of results that follow the select query
+     */
+    public static ResultSet select(Connection con,String select, String from, String where){
+        try{
+            Statement st= con.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+            String q="SELECT "+select+" FROM "+from;
+            if(!where.equals("")){
+                q+=" WHERE "+where;
+            }
+            q+=";";
+            System.out.println(q);
+            return st.executeQuery(q);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+            return null;
+        }
+    }
+ 
+    /**
+     * Insert SQL Method
+     * intoTable must be a valid table in the database
+     * num of elements in colValues tuple is the same as values and it matches to the correct columns
+     * returns the auto-incrementing id (which is to get transaction id because it auto-inc) else ret -1
+     */
+    public static int insert(Connection con, String intoTable,String colValues, String values){
+        try{
+            String ps="INSERT INTO kevramos."+intoTable+colValues+" VALUES "+values+";";
+            PreparedStatement pstmt=con.prepareStatement(ps,Statement.RETURN_GENERATED_KEYS);
+            System.out.println(ps);
+            pstmt.execute();
+            ResultSet rs=pstmt.getGeneratedKeys();
+            int getID=0;
+            while(rs.next()){
+                getID=rs.getInt(1);
+            }
+            return getID;
+        }catch(Exception e){
+            e.printStackTrace();
+            return -1;
+        }
+    }
+   
+    /**
+     * Update SQL Method
+     * UPDATE kevramos.shoppingcart SET itemquantity=3 WHERE itemid=7;
+     */
+    public static void update(Connection con, String table, String set, String where){
+        try{
+            String ps="UPDATE kevramos."+table+" SET "+set+" WHERE "+where+";";
+            PreparedStatement pstmt=con.prepareStatement(ps);
+            System.out.println(ps);
+            pstmt.execute();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+   
+    /**
+     * Delete SQL Method
+     * DELETE FROM table WHERE condition;
+     */
+    public static void delete(Connection con, String table, String where){
+        try{
+            String ps="DELETE FROM kevramos."+table+" WHERE "+where+";";
+            PreparedStatement pstmt=con.prepareStatement(ps);
+            System.out.println(ps);
+            pstmt.execute();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+}
